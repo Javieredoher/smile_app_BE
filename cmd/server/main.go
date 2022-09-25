@@ -1,56 +1,55 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"net/http"
 	"os"
 
-	"database/sql"
-
+	"github.com/Javieredoher/smile_app_BE/cmd/server/routes"
+	"github.com/Javieredoher/smile_app_BE/pkg/db"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/joho/godotenv"
+	"github.com/newrelic/go-agent/v3/integrations/nrgin"
 )
 
-var (
-	StorageDB *sql.DB
-)
 
 func main() {
-
-	//Enviroment
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("error .env variables")
-		return
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
 
-	host := os.Getenv("HOST")
-	dbusername := os.Getenv("DB_USER")
-	dbpass := os.Getenv("DB_PASS")
-	dbport := os.Getenv("DB_PORT")
-	dbname := os.Getenv("DB_NAME")
+	if err := run(port); err != nil {
+		log.Fatal("error running server", err)
+	}	
+}
 
-	// Database
-	dataSource := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbusername, dbpass, host, dbport, dbname)
-	StorageDB, err = sql.Open("mysql", dataSource)
-	if err != nil {
-		log.Fatal("error opening sql server")
-		return
+func run(port string) error {
+	// DefaultMeliRouter includes newrelic, datadog, attributes filter, jsonp and pprof middlewares.
+	router := gin.Default()
+
+	health := HealthChecker{}
+
+	mapRoutes(router, health)
+
+	return router.Run(":" + port)
+}
+
+func mapRoutes(r *gin.Engine, health HealthChecker) {
+
+	ro := routes.NewRouter(r, db.DB)
+	ro.MapRoutes()
+
+	r.GET("/ping", health.PingHandler)
+}
+
+type HealthChecker struct{}
+
+// PingHandler returns a successful pong answer to all HTTP requests.
+func (h HealthChecker) PingHandler(c *gin.Context) {
+	if txn := nrgin.Transaction(c); txn != nil {
+		txn.Ignore()
 	}
 
-	if err = StorageDB.Ping(); err != nil {
-		panic(err)
-	}
-
-	log.Println("database conected")
-
-	//Start server
-	r := gin.Default()
-	if err = r.Run(); err != nil {
-		panic(err)
-	}
-
-	//router := routes.NewRouter(r, StorageDB)
-	
+	c.String(http.StatusOK, "pong")
 }
