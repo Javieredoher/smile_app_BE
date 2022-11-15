@@ -5,14 +5,15 @@ import (
 	"log"
 	"os"
 
-	"gorm.io/driver/mysql"
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
-	"gorm.io/gorm"
+
 )
 
 
 var (
-	DB *gorm.DB
+	DB *sql.DB
 )
 
 func init() {
@@ -27,13 +28,11 @@ func init() {
 		host := os.Getenv("HOST")
 		dbusername := os.Getenv("DB_USER")
 		dbpass := os.Getenv("DB_PASS")
-		dbport := os.Getenv("DB_PORT")
 		dbname := os.Getenv("DB_NAME")
 	
 		// Database
-		dataSource := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbusername, dbpass, host, dbport, dbname)
-		//db, err := sql.Open("mysql", dataSource)
-		db, err := gorm.Open(mysql.Open(dataSource), &gorm.Config{})
+		dataSource := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8", dbusername, dbpass, host, dbname)
+		db, err := sql.Open("mysql", dataSource)
 		if err != nil {
 			log.Fatal("error opening sql server")
 			return

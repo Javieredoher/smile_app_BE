@@ -5,24 +5,38 @@ import (
 	"database/sql"
 
 	"github.com/Javieredoher/smile_app_BE/internal/domain"
-	"gorm.io/gorm"
 )
 
 type UserRepository interface {
-	SaveOdont(context.Context, domain.Odontologist) (int, error)
+	SaveUser(context.Context, domain.Odontologist) (int, error)
 }
 
 type repository struct {
-	db *gorm.DB
+	db *sql.DB
 }
 
-func NewRepository(db *gorm.DB) Repository {
-	return: &repository {
+func NewUserRepository(db *sql.DB) UserRepository{
+	return &repository{
 		db: db,
 	}
 }
 
-func (r *repository) SaveOdont(ctx context.Context, odo domain.Odontologist) (int, error) {
-	
-	err := db.Create(&odo)
+func (r *repository) SaveUser(ctx context.Context, user domain.User) (int, error) {
+	query := "INSERT INTO odont(attributes,separated) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
+	stmt, err := r.db.Prepare(query)
+	if err != nil {
+		return 0, err
+	}
+
+	res, err := stmt.Exec(user.attributes)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(id), nil
 }
